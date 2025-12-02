@@ -1,0 +1,929 @@
+<!DOCTYPE html><html><head><title>Speed Math</title><meta http-equiv="content-type" content="text/html; charset=UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui=1"><meta charset="UTF-8"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="description" content=""><link rel="manifest" href="manifest.json"><link rel="icon" type="image/png" href="icon64.png"><link rel="apple-touch-icon" sizes="180x180" href="icon180.png"><link rel="icon" type="image/png" sizes="32x32" href="icon32.png"><link rel="icon" type="image/png" sizes="16x16" href="icon16.png"><style>html,body {
+  margin: 0;
+  padding: 0;
+  background-color: #000;
+  overflow:hidden;
+  font-family: Verdana;
+}
+.noselect {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+#canvaswrapper {
+  text-align: center ;
+}
+</style><style>@font-face { font-family: "BitCell" ; src: url("fonts/BitCell.ttf") format("truetype"); }</style><script>window.fonts = ["BitCell"]</script></head><body class="noselect custom-cursor" oncontextmenu="return false;"><div id="canvaswrapper"></div><script type="text/javascript">var resources = {"images":[{"file":"icon.png","version":0,"size":0,"properties":{}}],"assets":[],"maps":{},"sounds":[],"music":[]};
+var graphics = "M1";
+
+</script><script type="text/javascript">var orientation = 'any' ;
+var aspect = 'free' ;
+var ms_libs = [] ;
+window.skip_service_worker = true;
+window.exported_project = true;
+window.ms_use_server = false ;
+</script><script src="compiler.js"></script><script src="parser.js"></script><script src="processor.js"></script><script src="program.js"></script><script src="routine.js"></script><script src="runner.js"></script><script src="token.js"></script><script src="tokenizer.js"></script><script src="transpiler.js"></script><script src="microengine.js"></script></body><script type="text/javascript">//
+//
+// The game is started with the code below.
+// Once you have received the "started" signal (see below),
+// you can do the following:
+// 1) Inject functions or objects into the global context of the microStudio engine, example:
+//
+//   window.player.setGlobal("special_callback",function(x) { console.info(x) }) ;
+//   // Your microScript code can now call the "special_callback" function
+//
+// 2) Call microScript global functions from your JavaScript code, example:
+//
+//   window.player.call("call_me_from_javascript",[10,1000]) ;
+//   // arguments to the function call are provided as an array
+//
+// 3) Run a microScript code snippet from your JavaScript code, example:
+//
+//   window.player.exec("player.position_x = 50",function(result) { console.log(result) ; }) ;
+//
+
+window.addEventListener("load",function() {
+  window.player = new Player(function(event) {
+    if (event.name == "started") {
+      // signal that the game is started
+    }
+    else if (event.name == "log") {
+      // console.info(event.data) ;
+    }
+  }) ;
+  document.body.focus() ;
+}) ;
+
+</script><script id="code" type="text/x-microscript">
+
+
+// file: speedmath/drawms.ms
+function()
+draw = function()
+  screen.clear("#87CEEB")
+  
+  if game.state == "menu" then
+    drawMenu()
+  elsif game.state == "playing" then
+    drawPlaying()
+  elsif game.state == "question" then
+    drawQuestion()
+  elsif game.state == "result" then
+    drawResult()
+  elsif game.state == "gameover" then
+    drawGameOver()
+  end
+end
+
+drawMenu = function()
+  screen.drawText("SPEED MATH RACING", 0, 60, 30, "#FFFFFF")
+  screen.drawText("Cálculo en velocidad", 0, 35, 15, "#FFFFFF")
+  
+  // Botón jugar
+  screen.fillRect(0, -30, 80, 15, "#4CAF50")
+  screen.drawText("JUGAR", 0, -30, 12, "#FFFFFF")
+  
+  screen.drawText("14 Niveles de Cálculo", 0, -50, 10, "#FFFF00")
+  screen.drawText("¡Completa todos y gana!", 0, -65, 9, "#FFFFFF")
+end
+
+drawPlaying = function()
+  // Carretera
+  screen.fillRect(0, 0, 60, 200, "#404040")
+  
+  // Líneas de la carretera (se mueven hacia abajo)
+  for i=0 to 10
+    local y = -100 + i*20 + game.road_offset
+    screen.fillRect(0, y, 3, 10, "#FFFFFF")
+  end
+  
+  // Dibujar autos rivales
+  for rival in rivals
+    drawRaceCar(rival.x, rival.y, rival.color, false)
+  end
+  
+  // Auto del jugador (arriba)
+  drawRaceCar(game.carX, game.carY, "#FF0000", true)
+  
+  // HUD
+  local speedText = "Velocidad: " + floor(game.speed) + " km/h"
+  local distText = "Distancia: " + floor(game.distance*100)/100 + " km"
+  local levelText = "Nivel " + game.level + "/" + levels.length + ": " + levels[game.level-1].name
+  local scoreText = "Puntos: " + game.score
+  
+  screen.drawText(speedText, 0, 85, 10, "#FFFFFF")
+  screen.drawText(distText, 0, 72, 10, "#FFFFFF")
+  screen.drawText(levelText, 0, 95, 8, "#FFFF00")
+  screen.drawText(scoreText, -60, 95, 10, "#00FF00")
+end
+
+drawRaceCar = function(x, y, color, isPlayer)
+  // Cuerpo principal del auto de carrera
+  screen.fillRect(x, y, 12, 20, color)
+  
+  // Cabina (parte superior más angosta)
+  screen.fillRect(x, y+6, 8, 8, "#333333")
+  
+  // Aleta trasera
+  if isPlayer then
+    screen.fillRect(x-8, y-10, 4, 3, color)
+    screen.fillRect(x+8, y-10, 4, 3, color)
+  else
+    screen.fillRect(x-8, y+10, 4, 3, color)
+    screen.fillRect(x+8, y+10, 4, 3, color)
+  end
+  
+  // Ruedas
+  if isPlayer then
+    screen.fillRect(x-7, y-8, 3, 6, "#000000")
+    screen.fillRect(x+7, y-8, 3, 6, "#000000")
+    screen.fillRect(x-7, y+8, 3, 6, "#000000")
+    screen.fillRect(x+7, y+8, 3, 6, "#000000")
+  else
+    screen.fillRect(x-7, y-2, 3, 6, "#000000")
+    screen.fillRect(x+7, y-2, 3, 6, "#000000")
+    screen.fillRect(x-7, y+12, 3, 6, "#000000")
+    screen.fillRect(x+7, y+12, 3, 6, "#000000")
+  end
+  
+  // Spoiler delantero
+  if isPlayer then
+    screen.fillRect(x, y+12, 10, 2, "#FFFFFF")
+  else
+    screen.fillRect(x, y-12, 10, 2, "#FFFFFF")
+  end
+  
+  // Número del auto
+  if isPlayer then
+    screen.drawText("1", x, y, 6, "#FFFFFF")
+  end
+end
+
+drawQuestion = function()
+  screen.fillRect(0, 0, 400, 120, "#000000")
+  
+  local levelData = levels[game.level-1]
+  local qIndex = game.currentQuestion % levelData.questions.length
+  local question = levelData.questions[qIndex]
+  
+  // Pregunta
+  local checkTitle = "NIVEL " + game.level + " - PREGUNTA " + (game.currentQuestion+1)
+  screen.drawText(checkTitle, 0, 70, 10, "#FFFF00")
+  screen.drawText(question.text, 0, 50, 7, "#FFFFFF")
+  
+  // Letras para las opciones
+  local letters = ["A", "B", "C", "D"]
+  
+  // Opciones
+  for i=0 to 3
+    local y = 30 - i*15
+    local color = "#4CAF50"
+    if i == selectedOption then
+      color = "#FFC107"
+    end
+    
+    screen.fillRect(0, y, 120, 10, color)
+    local optText = letters[i] + ") " + question.options[i]
+    screen.drawText(optText, 0, y, 8, "#000000")
+  end
+end
+
+drawResult = function()
+  screen.fillRect(0, 0, 140, 100, "#000000")
+  
+  local levelData = levels[game.level-1]
+  local qIndex = game.currentQuestion % levelData.questions.length
+  local question = levelData.questions[qIndex]
+  
+  // Letras para las respuestas
+  local letters = ["A", "B", "C", "D"]
+  
+  if selectedOption == question.correct then
+    screen.drawText("¡CORRECTO!", 0, 40, 20, "#4CAF50")
+    screen.drawText("+100 puntos", 0, 20, 12, "#FFFF00")
+    screen.drawText("¡Adelantaste a tus rivales!", 0, 5, 10, "#FFFFFF")
+  else
+    screen.drawText("INCORRECTO", 0, 40, 20, "#F44336")
+    local answerText = "Respuesta: " + letters[question.correct]
+    screen.drawText(answerText, 0, 20, 12, "#FFFF00")
+    screen.drawText("Tus rivales te adelantaron", 0, 5, 10, "#FFFFFF")
+  end
+  
+  screen.drawText("Toca para continuar", 0, -30, 10, "#AAAAAA")
+end
+
+drawGameOver = function()
+  screen.clear("#000000")
+  
+  local percentage = floor((game.score / 1400) * 100)
+  
+  if game.score >= 500 then
+    // VICTORIA
+    screen.drawText("¡GANASTE!", 0, 70, 35, "#FFD700")
+    screen.drawText("🏆", 0, 35, 25, "#FFD700")
+    screen.drawText("Puntuación Final: " + game.score, 0, 15, 15, "#FFFFFF")
+    screen.drawText("Aciertos: " + percentage + "%", 0, 0, 12, "#00FF00")
+    screen.drawText("¡Eres un maestro del cálculo!", 0, -20, 10, "#FFFF00")
+  else
+    // DERROTA
+    screen.drawText("FIN DEL JUEGO", 0, 70, 30, "#FF0000")
+    screen.drawText("Puntuación: " + game.score, 0, 35, 18, "#FFFFFF")
+    screen.drawText("Necesitas 500 puntos para ganar", 0, 15, 11, "#FFFF00")
+    screen.drawText("Aciertos: " + percentage + "%", 0, 0, 12, "#FF6666")
+    screen.drawText("¡Sigue practicando!", 0, -20, 10, "#AAAAAA")
+  end
+  
+  screen.drawText("Toca para volver al menú", 0, -50, 10, "#888888")
+end
+end()
+
+
+
+// file: speedmath/initms.ms
+function()
+init = function()
+  // Estado del juego
+  game = object
+    state = "menu"
+    level = 1
+    score = 0
+    time = 0
+    speed = 0
+    distance = 0
+    currentQuestion = 0
+    correctAnswers = 0
+    carX = 0
+    carY = -60
+    road_offset = 0
+    totalQuestions = 0
+  end
+  
+  // Crear autos rivales
+  createRivals()
+  
+  // Crear niveles
+  createLevels()
+  
+  selectedOption = -1
+  buttonHover = -1
+end
+
+createRivals = function()
+  rivals = []
+  
+  rival1 = object
+    x = -20
+    y = -80
+    speed = 45
+    color = "#0000FF"
+  end
+  rivals.push(rival1)
+  
+  rival2 = object
+    x = 20
+    y = -70
+    speed = 48
+    color = "#00FF00"
+  end
+  rivals.push(rival2)
+  
+  rival3 = object
+    x = -25
+    y = -50
+    speed = 42
+    color = "#FFFF00"
+  end
+  rivals.push(rival3)
+end
+
+createLevels = function()
+  levels = []
+  
+  // Nivel 1: Propiedades Reales
+  level1 = object
+    name = "Propiedades Reales"
+    questions = []
+  end
+  
+  q1 = object
+    text = "Tu auto necesita combustible. Tienes dos tanques:
+Tanque A: 3/4 de litro
+Tanque B: 5/6 de litro
+¿Cuánto combustible total tienes?"
+    options = []
+    correct = 0
+  end
+  q1.options.push("19/12 litros")
+  q1.options.push("8/10 litros")
+  q1.options.push("3/2 litros")
+  q1.options.push("15/24 litros")
+  level1.questions.push(q1)
+  
+  q2 = object
+    text = "La velocidad de tu auto se calcula: v = 5(x + 3) - 5x
+Simplifica la expresión:"
+    options = []
+    correct = 0
+  end
+  q2.options.push("15")
+  q2.options.push("5x + 3")
+  q2.options.push("10x + 15")
+  q2.options.push("0")
+  level1.questions.push(q2)
+  
+  q3 = object
+    text = "Distancia de salida: x=-8: |−8| = ?"
+    options = []
+    correct = 1
+  end
+  q3.options.push("-8 km")
+  q3.options.push("8 km")
+  q3.options.push("0 km")
+  q3.options.push("16 km")
+  level1.questions.push(q3)
+  
+  levels.push(level1)
+  
+  // Nivel 2: Ecuaciones
+  level2 = object
+    name = "Ecuaciones"
+    questions = []
+  end
+  
+  q1 = object
+    text = "Para esta carrera necesitas hacer 100km en total, tu ya hiciste 35km, si te mantienes constante a 13km/h ¿Cuantas horas necesitas? "
+    options = []
+    correct = 1
+  end
+  q1.options.push("3 horas")
+  q1.options.push("5 horas")
+  q1.options.push("7 horas")
+  q1.options.push("10 horas")
+  level2.questions.push(q1)
+  
+  q2 = object
+    text = "La trayectoria de tu auto sigue: x² - 5x + 6 = 0
+¿En qué posiciones x cruzas la línea de meta?"
+    options = []
+    correct = 1
+  end
+  q2.options.push("x=1, x=6")
+  q2.options.push("x=2, x=3")
+  q2.options.push("x=-2, x=-3")
+  q2.options.push("x=5, x=1")
+  level2.questions.push(q2)
+  
+  q3 = object
+    text = "La velocidad máxima permitida es 120 km/h.
+Tu velocidad actual es v = 2x + 30.
+¿Qué valores de x son seguros?"
+    options = []
+    correct = 0
+  end
+  q3.options.push("x ≤ 45")
+  q3.options.push("x ≥ 45")
+  q3.options.push("x < 90")
+  q3.options.push("x > 90")
+  level2.questions.push(q3)
+  
+  levels.push(level2)
+  
+  // Nivel 3: Funciones
+  level3 = object
+    name = "Funciones"
+    questions = []
+  end
+  
+  q1 = object
+    text = "La función de tu velocidad es: v(t) = √(t - 4)
+¿Desde qué tiempo t puede funcionar tu motor?"
+    options = []
+    correct = 1
+  end
+  q1.options.push("t ≥ 0")
+  q1.options.push("t ≥ 4")
+  q1.options.push("t > 4")
+  q1.options.push("Todos")
+  level3.questions.push(q1)
+  
+  q2 = object
+    text = "Tu posición está dada por: s(t) = 3t² - 2t + 1
+¿Dónde estás en t = 2 segundos?"
+    options = []
+    correct = 1
+  end
+  q2.options.push("5 metros")
+  q2.options.push("9 metros")
+  q2.options.push("13 metros")
+  q2.options.push("17 metros")
+  level3.questions.push(q2)
+  
+  q3 = object
+    text = "La temperatura del motor es T(v) = v + 10
+Tu velocidad es v(t) = 2t
+¿Cuál es la temperatura en función del tiempo?"
+    options = []
+    correct = 1
+  end
+  q3.options.push("t+10")
+  q3.options.push("2t+10")
+  q3.options.push("2t+20")
+  q3.options.push("12t")
+  level3.questions.push(q3)
+  
+  levels.push(level3)
+  
+  // Nivel 4: Trigonometría
+  level4 = object
+    name = "Trigonometría"
+    questions = []
+  end
+  
+  q1 = object
+    text = "Tu auto sube una rampa con ángulo de 30°.
+¿Cuál es el valor de sen(30°)?"
+    options = []
+    correct = 0
+  end
+  q1.options.push("1/2")
+  q1.options.push("√3/2")
+  q1.options.push("√2/2")
+  q1.options.push("1")
+  level4.questions.push(q1)
+  
+  q2 = object
+    text = "La oscilación de tu suspensión cumple: sen²(θ) + cos²(θ) = ?"
+    options = []
+    correct = 1
+  end
+  q2.options.push("0")
+  q2.options.push("1")
+  q2.options.push("2")
+  q2.options.push("θ")
+  level4.questions.push(q2)
+  
+  q3 = object
+    text = "La altura de tu auto en una pista ondulada es:
+h(x) = 3sen(x) + 5
+¿Cuál es la altura máxima que alcanzas?"
+    options = []
+    correct = 2
+  end
+  q3.options.push("3")
+  q3.options.push("5")
+  q3.options.push("8")
+  q3.options.push("2")
+  level4.questions.push(q3)
+  
+  levels.push(level4)
+  
+  // Nivel 5: Exponenciales
+  level5 = object
+    name = "Exponenciales"
+    questions = []
+  end
+  
+  q1 = object
+    text = "Tu velocidad se duplica cada 10 segundos.
+Velocidad inicial: 5 km/h
+Fórmula: v(t) = 5 · 2^(t/10)
+¿Qué velocidad tienes a los 20 segundos?"
+    options = []
+    correct = 2
+  end
+  q1.options.push("10 km/h")
+  q1.options.push("15 km/h")
+  q1.options.push("20 km/h")
+  q1.options.push("25 km/h")
+  level5.questions.push(q1)
+  
+  q2 = object
+    text = "El consumo de combustible sigue: log₂(c) = 3
+¿Cuántos litros consumes?"
+    options = []
+    correct = 1
+  end
+  q2.options.push("6 litros")
+  q2.options.push("8 litros")
+  q2.options.push("9 litros")
+  q2.options.push("16 litros")
+  level5.questions.push(q2)
+  
+  q3 = object
+    text = "log(100) + log(10) = ?"
+    options = []
+    correct = 2
+  end
+  q3.options.push("log(110)")
+  q3.options.push("log(1000)")
+  q3.options.push("3")
+  q3.options.push("11")
+  level5.questions.push(q3)
+  
+  levels.push(level5)
+  
+  // Nivel 6: Límites
+  level6 = object
+    name = "Límites"
+    questions = []
+  end
+  
+  q1 = object
+    text = "Tu auto se acerca a la meta. La distancia restante es:
+d(t) = 5/t cuando t → ∞
+¿A qué valor se acerca la distancia?"
+    options = []
+    correct = 2
+  end
+  q1.options.push("5")
+  q1.options.push("∞")
+  q1.options.push("0")
+  q1.options.push("No existe")
+  level6.questions.push(q1)
+  
+  q2 = object
+    text = "Calcula: lim(x→2) (x² - 4)/(x - 2)"
+    options = []
+    correct = 2
+  end
+  q2.options.push("0")
+  q2.options.push("2")
+  q2.options.push("4")
+  q2.options.push("No existe")
+  level6.questions.push(q2)
+  
+  q3 = object
+    text = "La velocidad cambia en x = 3:
+{ x + 1, si x < 3
+v(x) = {
+{ 2x - 2, si x ≥ 3
+¿Existe lim(x→3) v(x)?"
+    options = []
+    correct = 0
+  end
+  q3.options.push("Sí, vale 4")
+  q3.options.push("Sí, vale 3")
+  q3.options.push("No existe")
+  q3.options.push("Vale 5")
+  level6.questions.push(q3)
+  
+  levels.push(level6)
+  
+  // Nivel 7: Continuidad
+  level7 = object
+    name = "Continuidad"
+    questions = []
+  end
+  
+  q1 = object
+    text = "Para que tu auto no tenga saltos en x = 2:
+{ x² + k, si x ≤ 2
+f(x) = {
+{ 3x,
+si x > 2
+¿Qué valor debe tener k?"
+    options = []
+    correct = 0
+  end
+  q1.options.push("k = 2")
+  q1.options.push("k = 4")
+  q1.options.push("k = 6")
+  q1.options.push("k = -2")
+  level7.questions.push(q1)
+  
+  q2 = object
+    text = "Identifica el tipo de discontinuidad en x = 1:
+f(x) = (x - 1)/(x² - 1)"
+    options = []
+    correct = 1
+  end
+  q2.options.push("Continua")
+  q2.options.push("Disc. removible")
+  q2.options.push("Disc. de salto")
+  q2.options.push("Disc. infinita")
+  level7.questions.push(q2)
+  
+  levels.push(level7)
+  
+  // Nivel 8: Derivadas
+  level8 = object
+    name = "Derivadas"
+    questions = []
+  end
+  
+  q1 = object
+    text = "Tu posición es s(t) = t².
+La velocidad instantánea en t = 3 es:"
+    options = []
+    correct = 1
+  end
+  q1.options.push("3")
+  q1.options.push("6")
+  q1.options.push("9")
+  q1.options.push("12")
+  level8.questions.push(q1)
+  
+  q2 = object
+    text = "Tu velocidad es v(t) = 5t³ - 2t² + 7t - 1
+La aceleración a(t) = v'(t) es:"
+    options = []
+    correct = 0
+  end
+  q2.options.push("15t²-4t+7")
+  q2.options.push("15t²-4t")
+  q2.options.push("5t²-2t+7")
+  q2.options.push("15t³-4t²+7t")
+  level8.questions.push(q2)
+  
+  q3 = object
+    text = "La altura de tu auto es h(t) = 4sen(t)
+¿Cuál es la velocidad vertical h'(t)?"
+    options = []
+    correct = 1
+  end
+  q3.options.push("4sen(t)")
+  q3.options.push("4cos(t)")
+  q3.options.push("-4sen(t)")
+  q3.options.push("-4cos(t)")
+  level8.questions.push(q3)
+  
+  levels.push(level8)
+  
+  // Nivel 9: Tasas Relacionadas
+  level9 = object
+    name = "Tasas Relacionadas"
+    questions = []
+  end
+  
+  q1 = object
+    text = "Tu auto se aleja con velocidad 
+v=60 km/h.
+Su distancia al origen es d=√x²+100(km).Calcular dd/dt cuando x=75km"
+    options = []
+    correct = 0
+  end
+  q1.options.push("36 km/h")
+  q1.options.push("48 km/h")
+  q1.options.push("60 km/h")
+  q1.options.push("72 km/h")
+  level9.questions.push(q1)
+  
+  levels.push(level9)
+  
+  // Nivel 10: Máximos y Mínimos
+  level10 = object
+    name = "Máximos y Mínimos"
+    questions = []
+  end
+  
+  q1 = object
+    text = "El consumo de combustible es C(v) = v²/100 - 2v + 150
+¿A qué velocidad v se minimiza el consumo?"
+    options = []
+    correct = 2
+  end
+  q1.options.push("v = 50 km/h")
+  q1.options.push("v = 75 km/h")
+  q1.options.push("v = 100 km/h")
+  q1.options.push("v = 125 km/h")
+  level10.questions.push(q1)
+  
+  q2 = object
+    text = "La altura de la pista es h(x) = -x² + 4x + 5
+¿En qué punto x está la cima (máximo)?"
+    options = []
+    correct = 1
+  end
+  q2.options.push("x = 1")
+  q2.options.push("x = 2")
+  q2.options.push("x = 3")
+  q2.options.push("x = 4")
+  level10.questions.push(q2)
+  
+  levels.push(level10)
+  
+  // Nivel 11: L'Hôpital
+  level11 = object
+    name = "Regla de L'Hôpital"
+    questions = []
+  end
+  
+  q1 = object
+    text = "En el límite de tu velocidad:lim(x→0) sen(x)/x = ?"
+    options = []
+    correct = 1
+  end
+  q1.options.push("0")
+  q1.options.push("1")
+  q1.options.push("∞")
+  q1.options.push("No existe")
+  level11.questions.push(q1)
+  
+  q2 = object
+    text = "lim(x→∞) (3x²+2x)/(x²-5)=?"
+    options = []
+    correct = 2
+  end
+  q2.options.push("0")
+  q2.options.push("2")
+  q2.options.push("3")
+  q2.options.push("∞")
+  level11.questions.push(q2)
+  
+  levels.push(level11)
+  
+  // Nivel 12: Optimización
+  level12 = object
+    name = "Optimización"
+    questions = []
+  end
+  
+  q1 = object
+    text = "Tienes 200 metros de valla para cercar una pista rectangular.
+¿Qué dimensiones maximizan el área?"
+    options = []
+    correct = 1
+  end
+  q1.options.push("40 × 60")
+  q1.options.push("50 × 50")
+  q1.options.push("60 × 40")
+  q1.options.push("70 × 30")
+  level12.questions.push(q1)
+  
+  levels.push(level12)
+  
+  // Nivel 13: Newton
+  level13 = object
+    name = "Método de Newton"
+    questions = []
+  end
+  
+  q1 = object
+    text = "Para encontrar dónde f(x) = x² - 5 cruza el eje x,
+usas el método de Newton: x_{n+1} = x_n - f(x_n)/f'(x_n)
+Si x₀ = 2, ¿cuál es x₁?"
+    options = []
+    correct = 0
+  end
+  q1.options.push("2.25")
+  q1.options.push("2.5")
+  q1.options.push("2.75")
+  q1.options.push("3.0")
+  level13.questions.push(q1)
+  
+  levels.push(level13)
+end
+
+end()
+
+
+
+// file: speedmath/updatems.ms
+function()
+update = function()
+  if game.state == "menu" then
+    updateMenu()
+  elsif game.state == "playing" then
+    updatePlaying()
+  elsif game.state == "question" then
+    updateQuestion()
+  elsif game.state == "result" then
+    updateResult()
+  elsif game.state == "gameover" then
+    updateGameOver()
+  end
+end
+
+updateMenu = function()
+  if touch.press and touch.y < -20 and touch.y > -40 then
+    game.state = "playing"
+    game.level = 1
+    game.currentQuestion = 0
+    game.correctAnswers = 0
+    game.distance = 0
+    game.speed = 50
+    game.time = 0
+    game.score = 0
+    game.totalQuestions = 0
+    createRivals()
+  end
+end
+
+updatePlaying = function()
+  game.time += 1/60
+  game.road_offset -= game.speed/60
+  game.distance += game.speed/3600
+  
+  if game.road_offset < -20 then
+    game.road_offset = 0
+  end
+  
+  // Actualizar rivales
+  for rival in rivals
+    rival.y += rival.speed/60
+    
+    // Si el rival sale de la pantalla, reposicionarlo atrás
+    if rival.y > 100 then
+      rival.y = -120
+      rival.x = random.next(-25, 25)
+    end
+  end
+  
+  // Mostrar pregunta cada 500m
+  if game.distance >= (game.currentQuestion + 1) * 0.5 then
+    game.state = "question"
+    selectedOption = -1
+  end
+end
+
+updateQuestion = function()
+  // Detectar clic en opciones
+  if touch.press then
+    local levelData = levels[game.level-1]
+    local qIndex = game.currentQuestion % levelData.questions.length
+    local question = levelData.questions[qIndex]
+    
+    for i=0 to 3
+      local y = 30 - i*15
+      if touch.y > y-5 and touch.y < y+5 then
+        selectedOption = i
+        checkAnswer()
+      end
+    end
+  end
+end
+
+updateResult = function()
+  if touch.press then
+    game.currentQuestion += 1
+    game.totalQuestions += 1
+    
+    local levelData = levels[game.level-1]
+    
+    // Si completó todas las preguntas del nivel actual
+    if game.currentQuestion >= levelData.questions.length then
+      game.level += 1
+      game.currentQuestion = 0
+      
+      // Si completó todos los niveles, mostrar pantalla final
+      if game.level > levels.length then
+        game.state = "gameover"
+      else
+        game.state = "playing"
+        game.distance = 0
+      end
+    else
+      game.state = "playing"
+    end
+  end
+end
+
+updateGameOver = function()
+  if touch.press then
+    game.state = "menu"
+    game.level = 1
+    game.score = 0
+  end
+end
+
+checkAnswer = function()
+  local levelData = levels[game.level-1]
+  local qIndex = game.currentQuestion % levelData.questions.length
+  local question = levelData.questions[qIndex]
+  
+  if selectedOption == question.correct then
+    game.correctAnswers += 1
+    game.speed += 10
+    game.score += 100
+    
+    // Los rivales se ralentizan un poco
+    for rival in rivals
+      rival.speed -= 2
+      if rival.speed < 35 then
+        rival.speed = 35
+      end
+    end
+  else
+    if game.speed > 35 then
+      game.speed -= 5
+    end
+    
+    // Los rivales aceleran
+    for rival in rivals
+      rival.speed += 3
+      if rival.speed > 60 then
+        rival.speed = 60
+      end
+    end
+  end
+  
+  game.state = "result"
+end
+
+end()
+
+
+</script></html>
